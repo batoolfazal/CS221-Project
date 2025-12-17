@@ -1,0 +1,26 @@
+#include "GridMap.h"
+#include <iostream>
+
+using namespace std;
+
+// Recursively explores all reachable free cells from (row, col)
+void dfs(GridMap& map, int row, int col, bool visited[][1000]) {
+    visited[row][col] = true; // Mark current cell as visited
+
+    // Directions: Up, Down, Left, Right
+    int dRow[] = {-1, 1, 0, 0};
+    int dCol[] = {0, 0, -1, 1};
+
+    // Explore each neighbor recursively
+    for (int i = 0; i < 4; i++) {
+        int neighborRow = row + dRow[i];
+        int neighborCol = col + dCol[i];
+
+        // If neighbor is inside grid, free, and unvisited, explore it
+        if (map.isInBounds(neighborRow, neighborCol) &&
+            map.isFree(neighborRow, neighborCol) &&
+            !visited[neighborRow][neighborCol]) {
+            dfs(map, neighborRow, neighborCol, visited); // Recursive call
+        }
+    }
+}
