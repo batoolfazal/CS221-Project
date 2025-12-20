@@ -1,12 +1,6 @@
 #ifndef ASTAR_H
 #define ASTAR_H
 
-#include <iostream>
-#include <cmath>
-#include <stack>
-
-using namespace std;
-
 // Forward declarations of your project classes
 class GridMap;
 class HazardDetector;
