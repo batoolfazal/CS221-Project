@@ -15,6 +15,7 @@
  * DSA Course Project - GIKI Institute
  */
 
+#include "CampusMap.h"
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -303,6 +304,11 @@ public:
     // Check if cell is no-fly zone
     bool isNoFlyZone(int row, int col) const {
         return isInBounds(row, col) && grid[row][col] == CELL_NO_FLY_ZONE;
+    }
+
+    // Check if cell is hazard
+    bool isHazard(int row, int col) const {
+        return isInBounds(row, col) && grid[row][col] == CELL_HAZARD;
     }
 
     // Get cell value

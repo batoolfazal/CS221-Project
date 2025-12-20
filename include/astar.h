@@ -1,11 +1,8 @@
 #ifndef ASTAR_H
 #define ASTAR_H
 
-// Forward declarations of your project classes
-class GridMap;
-class HazardDetector;
+#include "../Mapping/CampusMap.h"
 
-// ======================= Cell Structure =======================
 struct Cell {
     int parentRow;
     int parentCol;
@@ -14,14 +11,12 @@ struct Cell {
     double h; // heuristic (distance to destination)
 };
 
-// ======================= Function Prototypes =======================
-bool isValid(int row, int col, GridMap& map, HazardDetector& detector);
+bool isValid(int row, int col, CampusMap& map);
 double calculateH(int row, int col, int destRow, int destCol);
 bool isDestination(int row, int col, int destRow, int destCol);
 void tracePath(Cell** cellDetails, int destRow, int destCol);
-void aStarSearch(GridMap& map, HazardDetector& detector,
+void aStarSearch(CampusMap& map,
                  int ROW, int COL, int srcRow, int srcCol,
                  int destRow, int destCol);
 
 #endif // ASTAR_H
-
