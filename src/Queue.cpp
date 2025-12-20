@@ -1,6 +1,41 @@
 #include "Queue.h"
 #include <iostream>
+#include "Queue.h"
 
+Queue::Queue(int size) : frontIndex(0), rearIndex(0), capacity(size), array(0) {
+    if (capacity < 1) capacity = 1;
+    array = new GridCell[capacity];
+}
+
+Queue::~Queue() {
+    if (array != 0) {
+        delete[] array;
+    }
+}
+
+bool Queue::isEmpty() const {
+    return frontIndex == rearIndex;
+}
+
+bool Queue::isFull() const {
+    return ((rearIndex + 1) % capacity) == frontIndex;
+}
+
+void Queue::enqueue(const GridCell& cell) {
+    if (isFull()) {
+        return; // silently ignore overflow
+    }
+    array[rearIndex] = cell;
+    rearIndex = (rearIndex + 1) % capacity;
+}
+
+GridCell Queue::dequeue() {
+    GridCell emptyCell = {-1, -1};
+    if (isEmpty()) return emptyCell;
+    GridCell value = array[frontIndex];
+    frontIndex = (frontIndex + 1) % capacity;
+    return value;
+}
 using namespace std;
 
 Queue::Queue(int size) {

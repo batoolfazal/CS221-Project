@@ -6,15 +6,25 @@ using namespace std;
 
 // Performs BFS to check if the goal is reachable from the start
 bool bfs(GridMap& map, int startRow, int startCol, int goalRow, int goalCol) {
-    const int MAX_GRID_SIZE = 1000;
-    bool visited[MAX_GRID_SIZE][MAX_GRID_SIZE] = {false}; // Track visited cells
+    int rows = map.getRows();
+    int cols = map.getCols();
+    if (!map.isInBounds(startRow, startCol) || !map.isInBounds(goalRow, goalCol)) {
+        return false;
+    }
+
+    // Dynamic visited grid sized to the map
+    bool** visited = new bool*[rows];
+    for (int i = 0; i < rows; i++) {
+        visited[i] = new bool[cols];
+        for (int j = 0; j < cols; j++) visited[i][j] = false;
+    }
 
     // Directions: Up, Down, Left, Right
     int dRow[] = {-1, 1, 0, 0};
     int dCol[] = {0, 0, -1, 1};
 
     // Initialize queue with maximum possible size
-    Queue queue(map.getRows() * map.getCols());
+    Queue queue(rows * cols);
 
     // Enqueue starting position and mark visited
     queue.enqueue({startRow, startCol});
@@ -25,6 +35,8 @@ bool bfs(GridMap& map, int startRow, int startCol, int goalRow, int goalCol) {
 
         // If we reached the goal, return true
         if (current.row == goalRow && current.col == goalCol) {
+            for (int i = 0; i < rows; i++) delete[] visited[i];
+            delete[] visited;
             return true;
         }
 
@@ -45,5 +57,7 @@ bool bfs(GridMap& map, int startRow, int startCol, int goalRow, int goalCol) {
     }
 
     // If queue empties without reaching goal, return false
+    for (int i = 0; i < rows; i++) delete[] visited[i];
+    delete[] visited;
     return false;
 }
