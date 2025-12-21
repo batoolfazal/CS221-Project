@@ -67,5 +67,5 @@ with open("DroneFlightLog.csv", "w") as f:
         f.write(f"{wp['battery']:.1f},")
         f.write(f"{wp['signal']:.1f}\n")
 
-print(f"✅ Generated {NUM_WAYPOINTS} waypoints → DroneFlightLog.csv")
+print(f"Generated {NUM_WAYPOINTS} waypoints -> DroneFlightLog.csv")
 
