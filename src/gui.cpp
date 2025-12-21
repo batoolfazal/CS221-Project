@@ -1,8 +1,8 @@
 #include "gui.h"
+#include "NFZ.h"
 
-// #ifdef USE_SFML
-// #include <SFML/Graphics.hpp>
-// #endif
+// #define USE_SFML
+#include <SFML/Graphics.hpp>
 
 void displayMissionGUI(
     CampusMap& map,
@@ -13,8 +13,9 @@ void displayMissionGUI(
     const std::vector<Hazard>& hazards
 ) {
 #ifdef USE_SFML
-    const int CELL_SIZE = 10; // Scale 80x80 -> 800x800
-    sf::RenderWindow window(sf::VideoMode(map.getCols() * CELL_SIZE, map.getRows() * CELL_SIZE),
+    std::cout << "Opening SFML GUI window..." << std::endl;
+    const int CELL_SIZE = 5; // Scale 80x80 -> 400x400
+    sf::RenderWindow window(sf::VideoMode({static_cast<unsigned int>(map.getCols() * CELL_SIZE), static_cast<unsigned int>(map.getRows() * CELL_SIZE)}),
                             "Mission Orchestrator - SFML Visualizer");
 
     // Colors
@@ -30,9 +31,8 @@ void displayMissionGUI(
     sf::RectangleShape cell(sf::Vector2f(CELL_SIZE - 1.f, CELL_SIZE - 1.f));
 
     while (window.isOpen()) {
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
+        while (auto event = window.pollEvent()) {
+            if (event->is<sf::Event::Closed>())
                 window.close();
         }
 
@@ -41,7 +41,7 @@ void displayMissionGUI(
         // Draw base map
         for (int r = 0; r < map.getRows(); r++) {
             for (int c = 0; c < map.getCols(); c++) {
-                cell.setPosition(c * CELL_SIZE, r * CELL_SIZE);
+                cell.setPosition(sf::Vector2f(c * CELL_SIZE, r * CELL_SIZE));
                 if (!map.isFree(r, c)) cell.setFillColor(colorWall);
                 else if (map.isNoFlyZone(r, c) || isNFZ(r, c)) cell.setFillColor(colorNFZ);
                 else cell.setFillColor(colorFree);
@@ -51,31 +51,31 @@ void displayMissionGUI(
 
         // Draw hazards
         for (const auto& h : hazards) {
-            cell.setPosition(h.col * CELL_SIZE, h.row * CELL_SIZE);
+            cell.setPosition(sf::Vector2f(h.x * CELL_SIZE, h.y * CELL_SIZE));
             cell.setFillColor(colorHazard);
             window.draw(cell);
         }
 
         // Draw path
         for (const auto& step : path) {
-            cell.setPosition(step.col * CELL_SIZE, step.row * CELL_SIZE);
+            cell.setPosition(sf::Vector2f(step.col * CELL_SIZE, step.row * CELL_SIZE));
             cell.setFillColor(colorPath);
             window.draw(cell);
         }
 
         // Draw waypoints
         for (const auto& wp : waypoints) {
-            cell.setPosition(wp.col * CELL_SIZE, wp.row * CELL_SIZE);
+            cell.setPosition(sf::Vector2f(wp.col * CELL_SIZE, wp.row * CELL_SIZE));
             cell.setFillColor(colorWaypoint);
             window.draw(cell);
         }
 
         // Draw Start & Goal
-        cell.setPosition(start.col * CELL_SIZE, start.row * CELL_SIZE);
+        cell.setPosition(sf::Vector2f(start.col * CELL_SIZE, start.row * CELL_SIZE));
         cell.setFillColor(colorStart);
         window.draw(cell);
 
-        cell.setPosition(goal.col * CELL_SIZE, goal.row * CELL_SIZE);
+        cell.setPosition(sf::Vector2f(goal.col * CELL_SIZE, goal.row * CELL_SIZE));
         cell.setFillColor(colorGoal);
         window.draw(cell);
 

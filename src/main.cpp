@@ -10,6 +10,7 @@
 #include "sort_utils.h"
 #include "astar.h"
 #include "HazardDetector.h"
+#include "gui.h"
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -223,27 +224,37 @@ int main() {
             bool bfsLeg = bfsConnectivity(campus, curR, curC, tr, tc);
             if (bfsLeg) {
                 std::cout << "[A*] Re-routing with A* after hazard injection...\n";
-                legs.push_back({ "Reroute", TelemetryLog(), {}, {} });
-                gTelemetryPtr = &legs.back().log;
-                aStarSearch(campus, campus.getRows(), campus.getCols(), curR, curC, tr, tc);
-                const int MAX = 4096;
-                TelemetryEntry buf[MAX];
-                int n = legs.back().log.toArray(buf, MAX);
-                legs.back().path.assign(buf, buf + n);
-                legs.back().hazards.clear();
-                for (int i = 0; i < n; i++) {
-                    int rr = buf[i].row, cc = buf[i].col;
-                    const char* desc = hazardDescription(rr, cc);
-                    if (desc && desc[0] != '\0') legs.back().hazards.push_back(std::string("(") + std::to_string(rr) + "," + std::to_string(cc) + ") HASH " + desc);
-                    if (gHazardDetector) {
-                        Hazard* hz = gHazardDetector->getHazard(rr, cc);
-                        if (hz && hz->isActive()) {
-                            legs.back().hazards.push_back(std::string("(") + std::to_string(rr) + "," + std::to_string(cc) + ") "
-                                + hz->type + " severity " + std::to_string(hz->severity) + "/5");
+                // If we are already at the target, short-circuit and record a 1-step path.
+                if (curR == tr && curC == tc) {
+                    legs.push_back({ "Reroute", TelemetryLog(), {}, {} });
+                    legs.back().log.logStep(curR, curC);
+                    TelemetryEntry single;
+                    single.row = curR; single.col = curC; single.metric = 0;
+                    legs.back().path.push_back(single);
+                    status = RE_ROUTED;
+                } else {
+                    legs.push_back({ "Reroute", TelemetryLog(), {}, {} });
+                    gTelemetryPtr = &legs.back().log;
+                    aStarSearch(campus, campus.getRows(), campus.getCols(), curR, curC, tr, tc);
+                    const int MAX = 4096;
+                    TelemetryEntry buf[MAX];
+                    int n = legs.back().log.toArray(buf, MAX);
+                    legs.back().path.assign(buf, buf + n);
+                    legs.back().hazards.clear();
+                    for (int i = 0; i < n; i++) {
+                        int rr = buf[i].row, cc = buf[i].col;
+                        const char* desc = hazardDescription(rr, cc);
+                        if (desc && desc[0] != '\0') legs.back().hazards.push_back(std::string("(") + std::to_string(rr) + "," + std::to_string(cc) + ") HASH " + desc);
+                        if (gHazardDetector) {
+                            Hazard* hz = gHazardDetector->getHazard(rr, cc);
+                            if (hz && hz->isActive()) {
+                                legs.back().hazards.push_back(std::string("(") + std::to_string(rr) + "," + std::to_string(cc) + ") "
+                                    + hz->type + " severity " + std::to_string(hz->severity) + "/5");
+                            }
                         }
                     }
+                    status = RE_ROUTED;
                 }
-                status = RE_ROUTED;
             } else {
                 std::cout << "[BFS] Re-route blocked by BFS. Mission terminated.\n";
                 status = BFS_FAILED;
@@ -299,6 +310,7 @@ int main() {
             if (i + 1 < waypoints.size()) out << ", ";
         }
         out << "]\n\n";
+        int totalSteps = 0;
         for (size_t i = 0; i < legs.size(); i++) {
             out << legs[i].name << ":\n";
             if (!legs[i].hazards.empty()) {
@@ -315,19 +327,41 @@ int main() {
                 else mergeSort(p.data(), (int)p.size(), cmpByRowCol);
                 TelemetryEntry last = p[0];
                 out << "(" << last.row << "," << last.col << ")\n";
+                totalSteps++;
                 for (size_t k = 1; k < p.size(); k++) {
                     if (p[k].row == last.row && p[k].col == last.col) continue;
                     out << "(" << p[k].row << "," << p[k].col << ")\n";
                     last = p[k];
+                    totalSteps++;
                 }
             }
             out << "\n";
         }
+        out << "Total steps (deduped across legs): " << totalSteps << "\n";
         out.close();
         std::cout << "mission_summary.txt written.\n";
     } else {
         std::cout << "Failed to write mission_summary.txt\n";
     }
+
+    // Optional GUI visualization (only if legs exist and built with SFML)
+#ifdef USE_SFML
+    if (!legs.empty() && (status == PATH_PLANNED || status == RE_ROUTED)) {
+        std::vector<TelemetryEntry> mergedPath;
+        for (size_t i = 0; i < legs.size(); i++) {
+            mergedPath.insert(mergedPath.end(), legs[i].path.begin(), legs[i].path.end());
+        }
+        std::vector<Waypoint> wp;
+        for (auto& p : waypoints) wp.push_back({p.first, p.second});
+        Waypoint startWp = {startR, startC};
+        Waypoint goalWp = {goalR, goalC};
+        std::vector<Hazard> hazards;
+        if (gHazardDetector) hazards = gHazardDetector->getActiveHazards();
+        displayMissionGUI(campus, mergedPath, startWp, goalWp, wp, hazards);
+    } else {
+        std::cout << "[GUI] Skipping GUI (no path or mission failed).\n";
+    }
+#endif
 
     return 0;
 }
