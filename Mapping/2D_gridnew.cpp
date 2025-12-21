@@ -311,6 +311,23 @@ public:
         return isInBounds(row, col) && grid[row][col] == CELL_HAZARD;
     }
 
+    // Mutators for mapping
+    void addWall(int row, int col) {
+        if (isInBounds(row, col)) {
+            grid[row][col] = CELL_BUILDING;
+        }
+    }
+
+    void removeWall(int row, int col) {
+        if (isInBounds(row, col)) {
+            grid[row][col] = CELL_FREE_PATH;
+        }
+    }
+
+    bool isBlocked(int row, int col) const {
+        return isObstacle(row, col) || isNoFlyZone(row, col) || isHazard(row, col);
+    }
+
     // Get cell value
     int getCell(int row, int col) const {
         if (!isInBounds(row, col)) return -1;

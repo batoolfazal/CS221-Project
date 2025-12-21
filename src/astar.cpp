@@ -14,7 +14,12 @@ bool isValid(int x, int y, GridMap& map) {
 }
 
 double calculateH(int row, int col, int destRow, int destCol) {
-    return sqrt((row - destRow)*(row - destRow) + (col - destCol)*(col - destCol));
+    // Manhattan distance fits grid movement cost model (4/8 neighbor mix still acceptable)
+    int dr = row - destRow;
+    if (dr < 0) dr = -dr;
+    int dc = col - destCol;
+    if (dc < 0) dc = -dc;
+    return static_cast<double>(dr + dc);
 }
 
 bool isDestination(int row, int col, int destRow, int destCol) {
@@ -22,47 +27,44 @@ bool isDestination(int row, int col, int destRow, int destCol) {
 }
 
 void tracePath(Cell** cellDetails, int destRow, int destCol) {
-    // Reconstruct path length first
-    int count = 0;
-    int row = destRow;
-    int col = destCol;
-    while (!(cellDetails[row][col].parentRow == row &&
-             cellDetails[row][col].parentCol == col)) {
-        count++;
-        int tempRow = cellDetails[row][col].parentRow;
-        int tempCol = cellDetails[row][col].parentCol;
-        row = tempRow;
-        col = tempCol;
+    // Use an array-backed stack to reverse the path
+    int capacity = 0;
+    int r = destRow, c = destCol;
+    while (!(cellDetails[r][c].parentRow == r && cellDetails[r][c].parentCol == c)) {
+        capacity++;
+        int tr = cellDetails[r][c].parentRow;
+        int tc = cellDetails[r][c].parentCol;
+        r = tr; c = tc;
     }
-    count++; // include source
+    capacity++; // include source
 
-    int* pathRows = new int[count];
-    int* pathCols = new int[count];
-    int idx = count - 1;
+    PathStack stack;
+    stack.rows = new int[capacity];
+    stack.cols = new int[capacity];
+    stack.top = -1;
+    stack.capacity = capacity;
 
-    row = destRow;
-    col = destCol;
-    while (!(cellDetails[row][col].parentRow == row &&
-             cellDetails[row][col].parentCol == col)) {
-        pathRows[idx] = row;
-        pathCols[idx] = col;
-        idx--;
-        int tempRow = cellDetails[row][col].parentRow;
-        int tempCol = cellDetails[row][col].parentCol;
-        row = tempRow;
-        col = tempCol;
+    r = destRow; c = destCol;
+    while (!(cellDetails[r][c].parentRow == r && cellDetails[r][c].parentCol == c)) {
+        stack.top++;
+        stack.rows[stack.top] = r;
+        stack.cols[stack.top] = c;
+        int tr = cellDetails[r][c].parentRow;
+        int tc = cellDetails[r][c].parentCol;
+        r = tr; c = tc;
     }
-    pathRows[idx] = row;
-    pathCols[idx] = col;
+    stack.top++;
+    stack.rows[stack.top] = r;
+    stack.cols[stack.top] = c;
 
     std::cout << "Path: ";
-    for (int i = 0; i < count; i++) {
-        std::cout << "(" << pathRows[i] << "," << pathCols[i] << ") ";
+    for (int i = stack.top; i >= 0; i--) {
+        std::cout << "(" << stack.rows[i] << "," << stack.cols[i] << ") ";
     }
     std::cout << std::endl;
 
-    delete[] pathRows;
-    delete[] pathCols;
+    delete[] stack.rows;
+    delete[] stack.cols;
 }
 
 // ======================= Helpers =======================

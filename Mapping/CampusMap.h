@@ -41,6 +41,11 @@ public:
     bool isHazard(int row, int col) const;
     int getCell(int row, int col) const;
 
+    // Mutators for mapping
+    void addWall(int row, int col);
+    void removeWall(int row, int col);
+    bool isBlocked(int row, int col) const;
+
     void buildMap();
     bool isPathPossible(int startR, int startC, int goalR, int goalC);
     bool loadFromFile(const char* filename);

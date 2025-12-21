@@ -27,4 +27,12 @@ bool bfsConnectivity(GridMap& map, int startRow, int startCol, int goalRow, int 
 void dfsExplore(GridMap& map, int row, int col, bool** visited);
 void runDfs(GridMap& map, int startRow, int startCol);
 
+// Stack node for path reconstruction (array-based stack).
+struct PathStack {
+    int* rows;
+    int* cols;
+    int top;
+    int capacity;
+};
+
 #endif // ASTAR_H
