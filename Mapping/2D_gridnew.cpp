@@ -22,12 +22,6 @@
 
 using namespace std;
 
-// ============ CELL TYPE CONSTANTS ============
-const int CELL_FREE_PATH = 0;
-const int CELL_BUILDING = 1;
-const int CELL_NO_FLY_ZONE = 2;
-const int CELL_HAZARD = 3;
-
 // ============ REGION STRUCTURE ============
 struct Region {
     int r1, c1, r2, c2;
@@ -148,18 +142,9 @@ public:
 };
 
 // ============ CAMPUS MAP CLASS ============
-class CampusMap {
-private:
-    int rows;
-    int cols;
-    int** grid;  // 2D dynamic array
-    Region* regions;  // Array of regions
-    int regionCount;
-    int maxRegions;
-    Graph* campusGraph;
 
     // Initialize region definitions for GIKI campus
-    void initializeRegions() {
+    void CampusMap::initializeRegions() {
         regionCount = 0;
         maxRegions = 30;  // Allow some extra space
         regions = new Region[maxRegions];
@@ -210,7 +195,7 @@ private:
     }
 
     // Robust boundary-checked region filling
-    void fillRegion(int r1, int c1, int r2, int c2, int cellType) {
+    void CampusMap::fillRegion(int r1, int c1, int r2, int c2, int cellType) {
         int startRow = (r1 < 0) ? 0 : (r1 >= rows ? rows - 1 : r1);
         int endRow = (r2 < 0) ? 0 : (r2 >= rows ? rows - 1 : r2);
         int startCol = (c1 < 0) ? 0 : (c1 >= cols ? cols - 1 : c1);
@@ -224,7 +209,7 @@ private:
     }
 
     // Build graph from grid (connect adjacent free cells)
-    void buildGraph() {
+    void CampusMap::buildGraph() {
         if (campusGraph != NULL) {
             delete campusGraph;
         }
@@ -250,9 +235,8 @@ private:
         }
     }
 
-public:
     // Constructor
-    CampusMap(int r = 80, int c = 80) : rows(r), cols(c), campusGraph(NULL), regionCount(0), maxRegions(30) {
+    CampusMap::CampusMap(int r, int c) : rows(r), cols(c), campusGraph(NULL), regionCount(0), maxRegions(30) {
         // Allocate 2D array
         grid = new int*[rows];
         for (int i = 0; i < rows; i++) {
@@ -266,7 +250,7 @@ public:
     }
 
     // Destructor
-    ~CampusMap() {
+    CampusMap::~CampusMap() {
         // Deallocate 2D array
         if (grid != NULL) {
             for (int i = 0; i < rows; i++) {
@@ -283,59 +267,59 @@ public:
     }
 
     // Getters
-    int getRows() const { return rows; }
-    int getCols() const { return cols; }
+    int CampusMap::getRows() const { return rows; }
+    int CampusMap::getCols() const { return cols; }
     
     // Check if cell is within bounds
-    bool isInBounds(int row, int col) const {
+    bool CampusMap::isInBounds(int row, int col) const {
         return (row >= 0 && row < rows && col >= 0 && col < cols);
     }
     
     // Check if cell is free path
-    bool isFree(int row, int col) const {
+    bool CampusMap::isFree(int row, int col) const {
         return isInBounds(row, col) && grid[row][col] == CELL_FREE_PATH;
     }
     
     // Check if cell is obstacle
-    bool isObstacle(int row, int col) const {
+    bool CampusMap::isObstacle(int row, int col) const {
         return isInBounds(row, col) && grid[row][col] == CELL_BUILDING;
     }
     
     // Check if cell is no-fly zone
-    bool isNoFlyZone(int row, int col) const {
+    bool CampusMap::isNoFlyZone(int row, int col) const {
         return isInBounds(row, col) && grid[row][col] == CELL_NO_FLY_ZONE;
     }
 
     // Check if cell is hazard
-    bool isHazard(int row, int col) const {
+    bool CampusMap::isHazard(int row, int col) const {
         return isInBounds(row, col) && grid[row][col] == CELL_HAZARD;
     }
 
     // Mutators for mapping
-    void addWall(int row, int col) {
+    void CampusMap::addWall(int row, int col) {
         if (isInBounds(row, col)) {
             grid[row][col] = CELL_BUILDING;
         }
     }
 
-    void removeWall(int row, int col) {
+    void CampusMap::removeWall(int row, int col) {
         if (isInBounds(row, col)) {
             grid[row][col] = CELL_FREE_PATH;
         }
     }
 
-    bool isBlocked(int row, int col) const {
+    bool CampusMap::isBlocked(int row, int col) const {
         return isObstacle(row, col) || isNoFlyZone(row, col) || isHazard(row, col);
     }
 
     // Get cell value
-    int getCell(int row, int col) const {
+    int CampusMap::getCell(int row, int col) const {
         if (!isInBounds(row, col)) return -1;
         return grid[row][col];
     }
 
     // Build the campus map from regions
-    void buildMap() {
+    void CampusMap::buildMap() {
         // Reset grid to free paths
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
@@ -354,7 +338,7 @@ public:
     }
 
     // BFS path check using Graph ADT
-    bool isPathPossible(int startR, int startC, int goalR, int goalC) {
+    bool CampusMap::isPathPossible(int startR, int startC, int goalR, int goalC) {
         if (!isFree(startR, startC)) {
             cout << "Error: Start (" << startR << "," << startC << ") not free!" << endl;
             return false;
@@ -373,7 +357,7 @@ public:
     }
 
     // Load grid from file
-    bool loadFromFile(const char* filename) {
+    bool CampusMap::loadFromFile(const char* filename) {
         ifstream file(filename);
         if (!file.is_open()) {
             cout << "Error: Cannot open file " << filename << endl;
@@ -429,7 +413,7 @@ public:
     }
 
     // Save grid to file
-    bool saveToFile(const char* filename) {
+    bool CampusMap::saveToFile(const char* filename) {
         ofstream file(filename);
         if (!file.is_open()) {
             cout << "Error: Cannot create file " << filename << endl;
@@ -451,7 +435,7 @@ public:
     }
 
     // Console visualization
-    void visualize() const {
+    void CampusMap::visualize() const {
         cout << "\n========== GIKI CAMPUS MAP ==========" << endl;
         cout << "Legend: . = Path, # = Building, N = No-Fly, H = Hazard" << endl;
         
@@ -473,7 +457,7 @@ public:
     }
 
     // Print statistics
-    void printStats() const {
+    void CampusMap::printStats() const {
         int freeCells = 0, buildings = 0, noFly = 0, hazards = 0;
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
@@ -489,36 +473,4 @@ public:
         cout << "- Free: " << freeCells << ", Buildings: " << buildings;
         cout << ", No-Fly: " << noFly << ", Hazards: " << hazards << endl;
     }
-};
 
-// ============ MAIN ============
-int main() {
-    ios_base::sync_with_stdio(false);
-    
-    cout << "=== GIKI Campus Map Generator ===" << endl;
-    
-    CampusMap campus(80, 80);
-    
-    // Try to load from map.txt first
-    if (campus.loadFromFile("map.txt")) {
-        cout << "Successfully loaded map from map.txt" << endl;
-    } else {
-        cout << "map.txt not found or failed to load. Building map from regions..." << endl;
-        campus.buildMap();
-        campus.saveToFile("map.txt");
-        cout << "Map saved to map.txt for future use" << endl;
-    }
-    
-    campus.visualize();
-    campus.printStats();
-    
-    // Path connectivity test using Graph ADT + BFS
-    cout << "\n=== Graph-Based Path Test ===" << endl;
-    int startR = 74, startC = 40;  // Main Gate
-    int goalR = 15, goalC = 34;    // Academic Block
-    
-    cout << "Path from Gate(" << startR << "," << startC << ") to Academic(" << goalR << "," << goalC << "): ";
-    cout << (campus.isPathPossible(startR, startC, goalR, goalC) ? "EXISTS" : "BLOCKED") << endl;
-    
-    return 0;
-}

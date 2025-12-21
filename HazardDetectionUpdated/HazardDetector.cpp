@@ -6,7 +6,7 @@
 
 using namespace std;
 
-HazardDetector* gHazardDetector = nullptr;
+extern HazardDetector* gHazardDetector;
 // ============================================
 // HAZARD IMPLEMENTATION
 // ============================================

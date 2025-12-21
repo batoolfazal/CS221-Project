@@ -2,7 +2,7 @@
 #include "GridMap.h"
 #include "NFZ.h"
 #include "telemetry.h"
-#include "HazardDetectionUpdated/HazardDetector.h"
+#include "HazardDetector.h"
 #include <iostream>
 #include <cmath>
 #include <limits>

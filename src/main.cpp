@@ -3,13 +3,13 @@
 #include <fstream>
 #include <cstdlib>
 #include <ctime>
-#include "Mapping/CampusMap.h"
+#include "CampusMap.h"
 #include "NFZ.h"
 #include "hashmap.h"
 #include "telemetry.h"
 #include "sort_utils.h"
 #include "astar.h"
-#include "HazardDetectionUpdated/HazardDetector.h"
+#include "HazardDetector.h"
 
 // Global telemetry sink for A* tracePath (declared extern in astar.cpp)
 TelemetryLog* gTelemetryPtr = 0;

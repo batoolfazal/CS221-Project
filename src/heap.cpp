@@ -46,7 +46,7 @@ void MinHeap::insertKey(int vIndex, int row, int col, double f) {
 }
 
 HeapNode MinHeap::extractMin() {
-    HeapNode empty = {-1, -1, 0.0};
+    HeapNode empty = {-1, -1, -1, 0};
     if (heap_size <= 0) return empty;
     if (heap_size == 1) {
         heap_size--;

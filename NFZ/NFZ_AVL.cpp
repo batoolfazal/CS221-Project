@@ -21,8 +21,8 @@ NFZDatabase::~NFZDatabase() {
     clearHelper(root);
     root = nullptr;
 }
-NFZDatabase::NFZNode* NFZDatabase::minValueNode(NFZNode* node) {
-    NFZNode* current = node;
+NFZDatabase::NFZNode* NFZDatabase::minValueNode(NFZDatabase::NFZNode* node) {
+    NFZDatabase::NFZNode* current = node;
     while (current && current->left != nullptr) {
         current = current->left;
     }
@@ -34,7 +34,7 @@ NFZDatabase::NFZNode* NFZDatabase::minValueNode(NFZNode* node) {
 /**
  * Get height of a node (returns 0 for nullptr)
  */
-int NFZDatabase::getHeight(NFZNode* node) const {
+int NFZDatabase::getHeight(NFZDatabase::NFZNode* node) const {
     if (node == nullptr) {
         return 0;
     }
@@ -50,7 +50,7 @@ int NFZDatabase::getHeight(NFZNode* node) const {
  *   < -1: right-heavy (needs left rotation)
  *   -1 to 1: balanced
  */
-int NFZDatabase::getBalance(NFZNode* node) const {
+int NFZDatabase::getBalance(NFZDatabase::NFZNode* node) const {
     if (node == nullptr) {
         return 0;
     }
@@ -60,7 +60,7 @@ int NFZDatabase::getBalance(NFZNode* node) const {
 /**
  * Update height of a node based on its children
  */
-void NFZDatabase::updateHeight(NFZNode* node) {
+void NFZDatabase::updateHeight(NFZDatabase::NFZNode* node) {
     if (node == nullptr) return;
     
     int leftHeight = getHeight(node->left);
@@ -83,9 +83,9 @@ void NFZDatabase::updateHeight(NFZNode* node) {
  *  /   \                     /   \
  * A     B                   B     C
  */
-NFZNode* NFZDatabase::rotateRight(NFZNode* node) {
-    NFZNode* newRoot = node->left;
-    NFZNode* temp = newRoot->right;
+NFZDatabase::NFZNode* NFZDatabase::rotateRight(NFZDatabase::NFZNode* node) {
+    NFZDatabase::NFZNode* newRoot = node->left;
+    NFZDatabase::NFZNode* temp = newRoot->right;
     
     // Perform rotation
     newRoot->right = node;
@@ -109,9 +109,9 @@ NFZNode* NFZDatabase::rotateRight(NFZNode* node) {
  *      /  \             /   \
  *     B    C           A     B
  */
-NFZNode* NFZDatabase::rotateLeft(NFZNode* node) {
-    NFZNode* newRoot = node->right;
-    NFZNode* temp = newRoot->left;
+NFZDatabase::NFZNode* NFZDatabase::rotateLeft(NFZDatabase::NFZNode* node) {
+    NFZDatabase::NFZNode* newRoot = node->right;
+    NFZDatabase::NFZNode* temp = newRoot->left;
     
     // Perform rotation
     newRoot->left = node;
@@ -130,7 +130,7 @@ NFZNode* NFZDatabase::rotateLeft(NFZNode* node) {
  * Performs left rotation on left child, then right rotation on node.
  * Fixes left-right imbalance.
  */
-NFZNode* NFZDatabase::rotateLeftRight(NFZNode* node) {
+NFZDatabase::NFZNode* NFZDatabase::rotateLeftRight(NFZDatabase::NFZNode* node) {
     node->left = rotateLeft(node->left);
     return rotateRight(node);
 }
@@ -141,7 +141,7 @@ NFZNode* NFZDatabase::rotateLeftRight(NFZNode* node) {
  * Performs right rotation on right child, then left rotation on node.
  * Fixes right-left imbalance.
  */
-NFZNode* NFZDatabase::rotateRightLeft(NFZNode* node) {
+NFZDatabase::NFZNode* NFZDatabase::rotateRightLeft(NFZDatabase::NFZNode* node) {
     node->right = rotateRight(node->right);
     return rotateLeft(node);
 }
@@ -186,10 +186,10 @@ int NFZDatabase::compareCoordinates(int x1, int y1, int x2, int y2) const {
  * 3. Get balance factor
  * 4. Rebalance if necessary using rotations
  */
-NFZNode* NFZDatabase::insertHelper(NFZNode* node, int x, int y) {
+NFZDatabase::NFZNode* NFZDatabase::insertHelper(NFZDatabase::NFZNode* node, int x, int y) {
     // Base case: create new node
     if (node == nullptr) {
-        return new NFZNode(x, y);
+        return new NFZDatabase::NFZNode(x, y);
     }
     
     // Compare coordinates to decide insertion direction
