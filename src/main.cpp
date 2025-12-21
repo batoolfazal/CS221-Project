@@ -34,8 +34,19 @@ static void suggestNearestValid(CampusMap& map, int& r, int& c) {
 }
 
 static void promptPoint(const char* label, CampusMap& map, int& r, int& c) {
-    std::cout << "Enter " << label << " row col: ";
-    std::cin >> r >> c;
+    bool ok = false;
+    while (!ok) {
+        std::cout << "Enter " << label << " row and col (0-" << (map.getRows() - 1)
+                  << " for rows, 0-" << (map.getCols() - 1) << " for cols; e.g., 10 12): ";
+        std::cout.flush();
+        if (!(std::cin >> r >> c)) {
+            std::cin.clear();
+            std::cin.ignore(1024, '\n');
+            std::cout << "Invalid input. Please enter two integers.\n";
+            continue;
+        }
+        ok = true;
+    }
     if (!map.isInBounds(r, c) || !map.isFree(r, c)) {
         std::cout << "Invalid/blocked. Searching nearby...\n";
         suggestNearestValid(map, r, c);
@@ -80,8 +91,8 @@ int main() {
     gTelemetryPtr = &telemetry;
 
     // 4. DFS pre-check
-    std::cout << "Running DFS pre-check...\n";
-    runDfs(campus, startR, startC);
+    // std::cout << "Running DFS pre-check...\n";
+    // runDfs(campus, startR, startC);
 
     // 5. BFS pre-check
     std::cout << "Running BFS connectivity check...\n";
