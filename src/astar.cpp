@@ -5,10 +5,11 @@
 #include <limits>
 
 // ======================= Supporting Functions =======================
-bool isValid(int x, int y, GridMap& map, HazardDetector& detector) {
+bool isValid(int x, int y, GridMap& map) {
+    if (!map.isInBounds(x, y)) return false;
     if (map.isObstacle(x, y)) return false;
     if (map.isNoFlyZone(x, y)) return false;
-    if (detector.isHazard(x, y)) return false;
+    if (map.isHazard(x, y)) return false;
     return true;
 }
 
@@ -64,13 +65,102 @@ void tracePath(Cell** cellDetails, int destRow, int destCol) {
     delete[] pathCols;
 }
 
+// ======================= Helpers =======================
+static int toIndex(int r, int c, int cols) {
+    return r * cols + c;
+}
+
+// ======================= BFS (array-based queue) =======================
+bool bfsConnectivity(GridMap& map, int startRow, int startCol, int goalRow, int goalCol) {
+    int rows = map.getRows();
+    int cols = map.getCols();
+    if (!map.isInBounds(startRow, startCol) || !map.isInBounds(goalRow, goalCol)) return false;
+    if (!map.isFree(startRow, startCol) || !map.isFree(goalRow, goalCol)) return false;
+
+    bool** visited = new bool*[rows];
+    for (int i = 0; i < rows; i++) {
+        visited[i] = new bool[cols];
+        for (int j = 0; j < cols; j++) visited[i][j] = false;
+    }
+
+    int maxSize = rows * cols;
+    int* qRow = new int[maxSize];
+    int* qCol = new int[maxSize];
+    int front = 0, back = 0;
+
+    qRow[back] = startRow; qCol[back] = startCol; back++;
+    visited[startRow][startCol] = true;
+
+    int dR[] = {-1, 1, 0, 0};
+    int dC[] = {0, 0, -1, 1};
+
+    while (front < back) {
+        int r = qRow[front];
+        int c = qCol[front];
+        front++;
+
+        if (r == goalRow && c == goalCol) {
+            for (int i = 0; i < rows; i++) delete[] visited[i];
+            delete[] visited;
+            delete[] qRow;
+            delete[] qCol;
+            return true;
+        }
+
+        for (int d = 0; d < 4; d++) {
+            int nr = r + dR[d];
+            int nc = c + dC[d];
+            if (map.isInBounds(nr, nc) && map.isFree(nr, nc) && !visited[nr][nc]) {
+                visited[nr][nc] = true;
+                qRow[back] = nr;
+                qCol[back] = nc;
+                back++;
+            }
+        }
+    }
+
+    for (int i = 0; i < rows; i++) delete[] visited[i];
+    delete[] visited;
+    delete[] qRow;
+    delete[] qCol;
+    return false;
+}
+
+// ======================= DFS (recursive) =======================
+void dfsExplore(GridMap& map, int row, int col, bool** visited) {
+    visited[row][col] = true;
+    int dR[] = {-1, 1, 0, 0};
+    int dC[] = {0, 0, -1, 1};
+    for (int d = 0; d < 4; d++) {
+        int nr = row + dR[d];
+        int nc = col + dC[d];
+        if (map.isInBounds(nr, nc) && map.isFree(nr, nc) && !visited[nr][nc]) {
+            dfsExplore(map, nr, nc, visited);
+        }
+    }
+}
+
+void runDfs(GridMap& map, int startRow, int startCol) {
+    int rows = map.getRows();
+    int cols = map.getCols();
+    if (!map.isInBounds(startRow, startCol) || !map.isFree(startRow, startCol)) return;
+    bool** visited = new bool*[rows];
+    for (int i = 0; i < rows; i++) {
+        visited[i] = new bool[cols];
+        for (int j = 0; j < cols; j++) visited[i][j] = false;
+    }
+    dfsExplore(map, startRow, startCol, visited);
+    for (int i = 0; i < rows; i++) delete[] visited[i];
+    delete[] visited;
+}
+
 // ======================= A* Algorithm =======================
-void aStarSearch(GridMap& map, HazardDetector& detector,
+void aStarSearch(GridMap& map,
                  int ROW, int COL, int srcRow, int srcCol,
                  int destRow, int destCol) {
 
-    if (!isValid(srcRow, srcCol, map, detector) ||
-        !isValid(destRow, destCol, map, detector)) {
+    if (!isValid(srcRow, srcCol, map) ||
+        !isValid(destRow, destCol, map)) {
         std::cout << "Source or Destination is invalid!" << std::endl;
         return;
     }
@@ -107,14 +197,11 @@ void aStarSearch(GridMap& map, HazardDetector& detector,
     cellDetails[srcRow][srcCol].parentRow = srcRow;
     cellDetails[srcRow][srcCol].parentCol = srcCol;
 
-    // Open list implemented as a simple array (f-score, row, col)
-    struct OpenNode { double f; int row; int col; };
-    int openListSize = ROW * COL;
-    OpenNode* openList = new OpenNode[openListSize];
-    int openCount = 1;
-    openList[0].f = 0.0;
-    openList[0].row = srcRow;
-    openList[0].col = srcCol;
+    // Open list implemented with custom min-heap
+    int totalV = ROW * COL;
+    MinHeap openHeap(totalV, totalV);
+    int srcIndex = toIndex(srcRow, srcCol, COL);
+    openHeap.insertKey(srcIndex, srcRow, srcCol, 0.0);
 
     bool foundDest = false;
 
@@ -123,21 +210,10 @@ void aStarSearch(GridMap& map, HazardDetector& detector,
     int colDir[] = {0, 0, 1, -1, 1, -1, 1, -1};
     double moveCost[] = {1.0,1.0,1.0,1.0,1.414,1.414,1.414,1.414};
 
-    while (openCount > 0) {
-        // Find cell with minimum f
-        int minIndex = 0;
-        for (int k = 1; k < openCount; k++) {
-            if (openList[k].f < openList[minIndex].f) minIndex = k;
-        }
-
-        int i = openList[minIndex].row;
-        int j = openList[minIndex].col;
-
-        // Remove from open list
-        openCount--;
-        for (int k = minIndex; k < openCount; k++) {
-            openList[k] = openList[k+1];
-        }
+    while (!openHeap.isEmpty()) {
+        HeapNode minNode = openHeap.extractMin();
+        int i = minNode.row;
+        int j = minNode.col;
 
         closedList[i][j] = true;
 
@@ -146,7 +222,9 @@ void aStarSearch(GridMap& map, HazardDetector& detector,
             int newRow = i + rowDir[dir];
             int newCol = j + colDir[dir];
 
-            if (isValid(newRow, newCol, map, detector)) {
+            if (isValid(newRow, newCol, map)) {
+                int vIndex = toIndex(newRow, newCol, COL);
+
                 if (isDestination(newRow, newCol, destRow, destCol)) {
                     cellDetails[newRow][newCol].parentRow = i;
                     cellDetails[newRow][newCol].parentCol = j;
@@ -154,14 +232,12 @@ void aStarSearch(GridMap& map, HazardDetector& detector,
                     tracePath(cellDetails, destRow, destCol);
                     foundDest = true;
 
-                    // cleanup
                     for (int r = 0; r < ROW; r++) {
                         delete[] closedList[r];
                         delete[] cellDetails[r];
                     }
                     delete[] closedList;
                     delete[] cellDetails;
-                    delete[] openList;
                     return;
                 }
 
@@ -171,17 +247,17 @@ void aStarSearch(GridMap& map, HazardDetector& detector,
                     double fNew = gNew + hNew;
 
                     if (cellDetails[newRow][newCol].f == std::numeric_limits<double>::max() || cellDetails[newRow][newCol].f > fNew) {
-                        if (openCount < openListSize) {
-                            openList[openCount].f = fNew;
-                            openList[openCount].row = newRow;
-                            openList[openCount].col = newCol;
-                            openCount++;
-                        }
                         cellDetails[newRow][newCol].f = fNew;
                         cellDetails[newRow][newCol].g = gNew;
                         cellDetails[newRow][newCol].h = hNew;
                         cellDetails[newRow][newCol].parentRow = i;
                         cellDetails[newRow][newCol].parentCol = j;
+
+                        if (!openHeap.contains(vIndex)) {
+                            openHeap.insertKey(vIndex, newRow, newCol, fNew);
+                        } else {
+                            openHeap.decreaseKey(vIndex, fNew);
+                        }
                     }
                 }
             }
@@ -196,6 +272,5 @@ void aStarSearch(GridMap& map, HazardDetector& detector,
     }
     delete[] closedList;
     delete[] cellDetails;
-    delete[] openList;
 }
 
