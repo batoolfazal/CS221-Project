@@ -1,18 +1,30 @@
-# D-2: Dynamic Hazard Detection System
+Dynamic Hazard Detection System
+Overview
 
-## Overview
-Real-time hazard detection using hash maps for O(1) lookup performance.
+Tracks hazards in a 2D airspace grid and checks for safety in real-time.
+Handles multiple hazard types, severity levels, and automatically removes expired hazards.
 
-## Features
-- ✅ **O(1) Hazard Lookup** - Instant position checking
-- ✅ **Time-Based Expiration** - Hazards auto-expire
-- ✅ **Multiple Types** - BIRD, DRONE, WEATHER, DEBRIS, AIRCRAFT
-- ✅ **Severity Levels** - 1-5 danger rating
-- ✅ **Path Safety** - Check entire paths at once
-- ✅ **File I/O** - Save/load hazard data
+Features
 
-## DSA Concept
-**Hash Map (unordered_map)** with integer keys for O(1) average-time lookup.
+O(1) Hazard Lookup – Instantly check any position
+
+Time-Based Expiration – Hazards disappear after their duration
+
+Multiple Types – BIRD, DRONE, WEATHER, DEBRIS, AIRCRAFT
+
+Severity Levels – 1-5 danger rating
+
+Path Safety – Check if a full path is safe
+
+File I/O – Save and load hazard data
+
+How it Works
+
+Uses a grid-based lookup for fast access
+
+Hazards can be added, checked, expired, or removed manually
+
+Includes a Python generator to create test hazard data
 
 ## File Structure
 ```
@@ -25,66 +37,6 @@ HazardDetection/
 └── README.md              - This file
 ```
 
-## Compilation
-
-### Quick Start
-```bash
-cd HazardDetection
-make -f HazardMakefile run
-```
-
-### Manual Steps
-```bash
-# Generate data
-python3 GenerateHazards.py
-
-# Build
-make -f HazardMakefile
-
-# Run
-./hazard_demo
-```
-
-## Usage Example
-```cpp
-#include "HazardDetector.h"
-
-// Initialize for 60x40 map
-HazardDetector detector(60, 40);
-
-// Add hazard
-detector.addHazard(25, 15, "BIRD", "Flock crossing", 15, 3);
-
-// Check position (O(1))
-if (detector.isHazard(25, 15)) {
-    cout << "Hazard detected!" << endl;
-}
-
-// Check path safety
-vector<pair<int, int> > path;
-path.push_back(make_pair(10, 10));
-path.push_back(make_pair(20, 20));
-path.push_back(make_pair(30, 30));
-bool safe = detector.isPathSafe(path);
-
-// Clean expired
-detector.cleanExpiredHazards();
-```
-
-## Integration with Main Project
-
-Add to your pathfinding:
-```cpp
-#include "../HazardDetection/HazardDetector.h"
-
-HazardDetector hazards(mapWidth, mapHeight);
-
-// During A* pathfinding
-if (hazards.isHazard(x, y)) {
-    // Skip this cell
-    continue;
-}
-```
 
 ## Performance
 - **Lookup**: O(1) average
