@@ -10,9 +10,11 @@
 #include "telemetry.h"
 #include "sort_utils.h"
 #include "astar.h"
+#include "../HazardDetectionUpdated/HazardDetector.h"
 
 // Global telemetry sink for A* tracePath (declared extern in astar.cpp)
 TelemetryLog* gTelemetryPtr = 0;
+HazardDetector* gHazardDetector = nullptr;
 
 static void suggestNearestValid(CampusMap& map, int& r, int& c) {
     if (map.isFree(r, c)) return;
@@ -62,8 +64,11 @@ int main() {
     insertNFZ(29, 55);
     insertNFZ(40, 55);
 
-    // 3. Dynamic hazards
-    generateRandomHazards(10, campus.getRows(), campus.getCols(), "dyn");
+    // 3. Dynamic hazards (hashmap) + HazardDetectorUpdated
+    // (Use updated generator akin to GenerateHazards.py)
+    HazardDetector detector(campus.getCols(), campus.getRows());
+    gHazardDetector = &detector;
+    hdGenerateRandomHazards(10);
 
     // Waypoints
     int startR = 74, startC = 40;
@@ -90,7 +95,7 @@ int main() {
 
     // 7. Re-route if new hazard appears
     std::cout << "Injecting new hazards and re-routing...\n";
-    addHazard((startR + goalR) / 2, (startC + goalC) / 2, "mid_path_block");
+    hdAddHazard((startR + goalR) / 2, (startC + goalC) / 2 + 1, "WEATHER", "Storm cell", 120, 4);
     aStarSearch(campus, campus.getRows(), campus.getCols(), startR, startC, goalR, goalC);
 
     // 8. Telemetry captured via gTelemetryPtr
