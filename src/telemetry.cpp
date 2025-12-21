@@ -48,3 +48,17 @@ int TelemetryLog::size() const {
     return count;
 }
 
+int TelemetryLog::toArray(TelemetryEntry* out, int maxCount) const {
+    if (out == 0 || maxCount <= 0) return 0;
+    int written = 0;
+    const TelemetryNode* cur = head;
+    while (cur != 0 && written < maxCount) {
+        out[written].row = cur->row;
+        out[written].col = cur->col;
+        out[written].metric = 0;
+        written++;
+        cur = cur->next;
+    }
+    return written;
+}
+
