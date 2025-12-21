@@ -29,6 +29,8 @@ bool isDestination(int row, int col, int destRow, int destCol) {
     return (row == destRow && col == destCol);
 }
 
+extern TelemetryLog* gTelemetryPtr;
+
 void tracePath(Cell** cellDetails, int destRow, int destCol) {
     // Use an array-backed stack to reverse the path
     int capacity = 0;
@@ -65,6 +67,9 @@ void tracePath(Cell** cellDetails, int destRow, int destCol) {
     for (int i = stack.top; i >= 0; i--) {
         std::cout << "(" << stack.rows[i] << "," << stack.cols[i] << ") ";
         log.logStep(stack.rows[i], stack.cols[i]);
+        if (gTelemetryPtr != 0) {
+            gTelemetryPtr->logStep(stack.rows[i], stack.cols[i]);
+        }
     }
     std::cout << std::endl;
     log.printLog();
