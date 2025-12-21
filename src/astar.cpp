@@ -1,5 +1,6 @@
 #include "astar.h"
 #include "GridMap.h"
+#include "NFZ.h"
 #include <iostream>
 #include <cmath>
 #include <limits>
@@ -10,6 +11,7 @@ bool isValid(int x, int y, GridMap& map) {
     if (map.isObstacle(x, y)) return false;
     if (map.isNoFlyZone(x, y)) return false;
     if (map.isHazard(x, y)) return false;
+    if (isNFZ(x, y)) return false; // NFZ AVL override
     return true;
 }
 
