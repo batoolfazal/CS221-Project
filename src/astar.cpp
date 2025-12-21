@@ -1,6 +1,7 @@
 #include "astar.h"
 #include "GridMap.h"
 #include "NFZ.h"
+#include "telemetry.h"
 #include <iostream>
 #include <cmath>
 #include <limits>
@@ -59,11 +60,14 @@ void tracePath(Cell** cellDetails, int destRow, int destCol) {
     stack.rows[stack.top] = r;
     stack.cols[stack.top] = c;
 
+    TelemetryLog log;
     std::cout << "Path: ";
     for (int i = stack.top; i >= 0; i--) {
         std::cout << "(" << stack.rows[i] << "," << stack.cols[i] << ") ";
+        log.logStep(stack.rows[i], stack.cols[i]);
     }
     std::cout << std::endl;
+    log.printLog();
 
     delete[] stack.rows;
     delete[] stack.cols;
