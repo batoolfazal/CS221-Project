@@ -10,7 +10,7 @@
 #include "sort_utils.h"
 #include "astar.h"
 #include "HazardDetector.h"
-#include "gui.h"
+#include "../GUI_sfml/gui.h"
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -351,22 +351,32 @@ int main() {
     }
 
     // 10. Report generation with traversal-ordered path
-    std::cout << "[INFO] Writing mission_summary.txt...\n";
+    // IMPORTANT: Mission summary is written BEFORE GUI opens
+    // This ensures the file is complete even if GUI blocks execution
+    std::cout << "[INFO] Writing mission_summary.txt..." << std::endl;
     std::ofstream out("mission_summary.txt");
     if (out.is_open()) {
         out << "==============================\n";
         out << "        MISSION SUMMARY\n";
         out << "==============================\n\n";
+        
+        // Map information
+        out << "Map: " << campus.getRows() << "x" << campus.getCols() << "\n";
         out << "Start: (" << startR << ", " << startC << ")\n";
         out << "Goal:  (" << goalR << ", " << goalC << ")\n\n";
+        
+        // Waypoints
         out << "Waypoints:\n";
-        if (waypoints.empty()) out << "- None\n\n";
-        else {
+        if (waypoints.empty()) {
+            out << "- None\n\n";
+        } else {
             for (size_t i = 0; i < waypoints.size(); i++) {
                 out << "- (" << waypoints[i].first << ", " << waypoints[i].second << ")\n";
             }
             out << "\n";
         }
+        
+        // Path information
         int totalSteps = (int)mergedPath.size();
         out << "Total Steps: " << totalSteps << "\n";
         out << "Path Length: " << totalSteps << "\n";
@@ -374,7 +384,31 @@ int main() {
                                 (status == BFS_FAILED) ? "FAILED_BFS" : "FAILED";
         out << "Execution Status: " << statusStr << "\n\n";
 
-        out << "--- Path Sequence (in traversal order) ---\n";
+        // Path sequence by legs
+        out << "--- Path by Legs ---\n";
+        for (size_t legIdx = 0; legIdx < legs.size(); legIdx++) {
+            out << "\n" << legs[legIdx].name << ":\n";
+            out << "Path:\n";
+            if (!legs[legIdx].path.empty()) {
+                for (size_t i = 0; i < legs[legIdx].path.size(); i++) {
+                    out << "(" << legs[legIdx].path[i].row << "," << legs[legIdx].path[i].col << ")\n";
+                }
+            } else {
+                out << "(empty)\n";
+            }
+            
+            // Hazards encountered in this leg
+            if (!legs[legIdx].hazards.empty()) {
+                out << "Hazards detected:\n";
+                for (const auto& hz : legs[legIdx].hazards) {
+                    out << "  " << hz << "\n";
+                }
+            }
+        }
+        out << "\n";
+
+        // Complete path sequence (merged)
+        out << "--- Complete Path Sequence (in traversal order) ---\n";
         if (!mergedPath.empty()) {
             for (size_t i = 0; i < mergedPath.size(); i++) {
                 out << "(" << mergedPath[i].row << "," << mergedPath[i].col << ")";
@@ -386,19 +420,22 @@ int main() {
         }
         out << "\n";
 
+        // Analysis sections
         out << "--- DFS Analysis ---\n";
         out << "Reachable Cells (est.): " << dfsReachable << "\n\n";
 
         out << "--- BFS Check ---\n";
         out << "Connectivity: " << (bfsOk ? "PASSED" : "FAILED") << "\n\n";
 
+        // Hazard statistics
         int hazardsTotal = gHazardDetector ? gHazardDetector->getTotalDetected() : 0;
         int hazardsActive = gHazardDetector ? gHazardDetector->getActiveCount() : 0;
         bool hazardsAvoided = true;
         for (size_t i = 0; i < mergedPath.size(); i++) {
             int rr = mergedPath[i].row, cc = mergedPath[i].col;
             if (campus.isHazard(rr, cc) || (gHazardDetector && gHazardDetector->isHazard(rr, cc))) {
-                hazardsAvoided = false; break;
+                hazardsAvoided = false;
+                break;
             }
         }
         out << "--- Hazards Encountered ---\n";
@@ -409,27 +446,45 @@ int main() {
         out << "==============================\n";
         out << "End of Report\n";
         out << "==============================\n";
+        
+        // Ensure file is flushed and closed
+        out.flush();
         out.close();
-        std::cout << "[INFO] mission_summary.txt written.\n";
+        std::cout << "[INFO] mission_summary.txt written successfully." << std::endl;
     } else {
-        std::cout << "Failed to write mission_summary.txt\n";
+        std::cerr << "[ERROR] Failed to open mission_summary.txt for writing!" << std::endl;
     }
 
-    // Optional GUI visualization (only if legs exist and built with SFML)
+    // 11. Optional GUI visualization (only if legs exist and built with SFML)
+    // NOTE: Mission summary has already been written above, so GUI blocking is safe
+    // The GUI will display the complete mission visualization and block until user closes it
 #ifdef USE_SFML
     if (!mergedPath.empty() && (status == PATH_PLANNED || status == RE_ROUTED)) {
-        std::cout << "[INFO] Launching SFML visualizer...\n";
+        std::cout << "[INFO] Mission summary written. Launching SFML visualizer..." << std::endl;
         std::vector<Waypoint> wp;
-        for (auto& p : waypoints) wp.push_back({p.first, p.second});
+        for (auto& p : waypoints) {
+            wp.push_back({p.first, p.second});
+        }
         Waypoint startWp = {startR, startC};
         Waypoint goalWp = {goalR, goalC};
         std::vector<Hazard> hazards;
-        if (gHazardDetector) hazards = gHazardDetector->getActiveHazards();
+        if (gHazardDetector) {
+            hazards = gHazardDetector->getActiveHazards();
+        }
+        // This call will block until the user closes the GUI window
         displayMissionGUI(campus, mergedPath, startWp, goalWp, wp, hazards);
-        std::cout << "[INFO] SFML visualizer closed.\n";
+        std::cout << "[INFO] SFML visualizer closed. Mission complete." << std::endl;
     } else {
-        std::cout << "[GUI] Skipping GUI (no path or mission failed).\n";
+        std::cout << "[GUI] Skipping GUI visualization:" << std::endl;
+        if (mergedPath.empty()) {
+            std::cout << "      - No path to display" << std::endl;
+        }
+        if (status != PATH_PLANNED && status != RE_ROUTED) {
+            std::cout << "      - Mission status: " << status << " (not completed)" << std::endl;
+        }
     }
+#else
+    std::cout << "[GUI] SFML not enabled. Mission summary is available in mission_summary.txt" << std::endl;
 #endif
 
     return 0;
