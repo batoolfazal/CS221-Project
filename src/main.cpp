@@ -10,12 +10,13 @@
 #include "sort_utils.h"
 #include "astar.h"
 #include "HazardDetector.h"
-#include "../GUI_sfml/gui.h"
 #include <vector>
 #include <string>
 #include <algorithm>
 #include <utility>
 #include <limits>
+#include <sstream>
+#include <filesystem>
 
 // Global telemetry sink for A* tracePath (declared extern in astar.cpp)
 TelemetryLog* gTelemetryPtr = 0;
@@ -350,142 +351,115 @@ int main() {
         std::cout << "Mission failed before visualization; skipping grid view.\n";
     }
 
-    // 10. Report generation with traversal-ordered path
-    // IMPORTANT: Mission summary is written BEFORE GUI opens
-    // This ensures the file is complete even if GUI blocks execution
-    std::cout << "[INFO] Writing mission_summary.txt..." << std::endl;
+    // 10. Report generation with traversal-ordered path (also echoed to console)
+    std::cout << "[INFO] Writing mission_summary.txt in CWD: " << std::filesystem::current_path().string() << std::endl;
+    std::ostringstream report;
+
+    report << "==============================\n";
+    report << "        MISSION SUMMARY\n";
+    report << "==============================\n\n";
+    
+    // Map information
+    report << "Map: " << campus.getRows() << "x" << campus.getCols() << "\n";
+    report << "Start: (" << startR << ", " << startC << ")\n";
+    report << "Goal:  (" << goalR << ", " << goalC << ")\n\n";
+    
+    // Waypoints
+    report << "Waypoints:\n";
+    if (waypoints.empty()) {
+        report << "- None\n\n";
+    } else {
+        for (size_t i = 0; i < waypoints.size(); i++) {
+            report << "- (" << waypoints[i].first << ", " << waypoints[i].second << ")\n";
+        }
+        report << "\n";
+    }
+    
+    // Path information
+    int totalSteps = (int)mergedPath.size();
+    report << "Total Steps: " << totalSteps << "\n";
+    report << "Path Length: " << totalSteps << "\n";
+    std::string statusStr = (status == PATH_PLANNED || status == RE_ROUTED) ? "COMPLETED" :
+                            (status == BFS_FAILED) ? "FAILED_BFS" : "FAILED";
+    report << "Execution Status: " << statusStr << "\n\n";
+
+    // Path sequence by legs
+    report << "--- Path by Legs ---\n";
+    for (size_t legIdx = 0; legIdx < legs.size(); legIdx++) {
+        report << "\n" << legs[legIdx].name << ":\n";
+        report << "Path:\n";
+        if (!legs[legIdx].path.empty()) {
+            for (size_t i = 0; i < legs[legIdx].path.size(); i++) {
+                report << "(" << legs[legIdx].path[i].row << "," << legs[legIdx].path[i].col << ")\n";
+            }
+        } else {
+            report << "(empty)\n";
+        }
+        
+        // Hazards encountered in this leg
+        if (!legs[legIdx].hazards.empty()) {
+            report << "Hazards detected:\n";
+            for (const auto& hz : legs[legIdx].hazards) {
+                report << "  " << hz << "\n";
+            }
+        }
+    }
+    report << "\n";
+
+    // Complete path sequence (merged)
+    report << "--- Complete Path Sequence (in traversal order) ---\n";
+    if (!mergedPath.empty()) {
+        for (size_t i = 0; i < mergedPath.size(); i++) {
+            report << "(" << mergedPath[i].row << "," << mergedPath[i].col << ")";
+            if (i + 1 < mergedPath.size()) report << " -> ";
+        }
+        report << "\n";
+    } else {
+        report << "No path recorded.\n";
+    }
+    report << "\n";
+
+    // Analysis sections
+    report << "--- DFS Analysis ---\n";
+    report << "Reachable Cells (est.): " << dfsReachable << "\n\n";
+
+    report << "--- BFS Check ---\n";
+    report << "Connectivity: " << (bfsOk ? "PASSED" : "FAILED") << "\n\n";
+
+    // Hazard statistics
+    int hazardsTotal = gHazardDetector ? gHazardDetector->getTotalDetected() : 0;
+    int hazardsActive = gHazardDetector ? gHazardDetector->getActiveCount() : 0;
+    bool hazardsAvoided = true;
+    for (size_t i = 0; i < mergedPath.size(); i++) {
+        int rr = mergedPath[i].row, cc = mergedPath[i].col;
+        if (campus.isHazard(rr, cc) || (gHazardDetector && gHazardDetector->isHazard(rr, cc))) {
+            hazardsAvoided = false;
+            break;
+        }
+    }
+    report << "--- Hazards Encountered ---\n";
+    report << "Total Hazards Injected: " << hazardsTotal << "\n";
+    report << "Active Hazards: " << hazardsActive << "\n";
+    report << "Hazards Avoided: " << (hazardsAvoided ? "YES" : "NO") << "\n\n";
+
+    report << "==============================\n";
+    report << "End of Report\n";
+    report << "==============================\n";
+
+    // Emit to console
+    std::cout << report.str() << std::endl;
+
+    // Write to file
     std::ofstream out("mission_summary.txt");
     if (out.is_open()) {
-        out << "==============================\n";
-        out << "        MISSION SUMMARY\n";
-        out << "==============================\n\n";
-        
-        // Map information
-        out << "Map: " << campus.getRows() << "x" << campus.getCols() << "\n";
-        out << "Start: (" << startR << ", " << startC << ")\n";
-        out << "Goal:  (" << goalR << ", " << goalC << ")\n\n";
-        
-        // Waypoints
-        out << "Waypoints:\n";
-        if (waypoints.empty()) {
-            out << "- None\n\n";
-        } else {
-            for (size_t i = 0; i < waypoints.size(); i++) {
-                out << "- (" << waypoints[i].first << ", " << waypoints[i].second << ")\n";
-            }
-            out << "\n";
-        }
-        
-        // Path information
-        int totalSteps = (int)mergedPath.size();
-        out << "Total Steps: " << totalSteps << "\n";
-        out << "Path Length: " << totalSteps << "\n";
-        std::string statusStr = (status == PATH_PLANNED || status == RE_ROUTED) ? "COMPLETED" :
-                                (status == BFS_FAILED) ? "FAILED_BFS" : "FAILED";
-        out << "Execution Status: " << statusStr << "\n\n";
-
-        // Path sequence by legs
-        out << "--- Path by Legs ---\n";
-        for (size_t legIdx = 0; legIdx < legs.size(); legIdx++) {
-            out << "\n" << legs[legIdx].name << ":\n";
-            out << "Path:\n";
-            if (!legs[legIdx].path.empty()) {
-                for (size_t i = 0; i < legs[legIdx].path.size(); i++) {
-                    out << "(" << legs[legIdx].path[i].row << "," << legs[legIdx].path[i].col << ")\n";
-                }
-            } else {
-                out << "(empty)\n";
-            }
-            
-            // Hazards encountered in this leg
-            if (!legs[legIdx].hazards.empty()) {
-                out << "Hazards detected:\n";
-                for (const auto& hz : legs[legIdx].hazards) {
-                    out << "  " << hz << "\n";
-                }
-            }
-        }
-        out << "\n";
-
-        // Complete path sequence (merged)
-        out << "--- Complete Path Sequence (in traversal order) ---\n";
-        if (!mergedPath.empty()) {
-            for (size_t i = 0; i < mergedPath.size(); i++) {
-                out << "(" << mergedPath[i].row << "," << mergedPath[i].col << ")";
-                if (i + 1 < mergedPath.size()) out << " -> ";
-            }
-            out << "\n";
-        } else {
-            out << "No path recorded.\n";
-        }
-        out << "\n";
-
-        // Analysis sections
-        out << "--- DFS Analysis ---\n";
-        out << "Reachable Cells (est.): " << dfsReachable << "\n\n";
-
-        out << "--- BFS Check ---\n";
-        out << "Connectivity: " << (bfsOk ? "PASSED" : "FAILED") << "\n\n";
-
-        // Hazard statistics
-        int hazardsTotal = gHazardDetector ? gHazardDetector->getTotalDetected() : 0;
-        int hazardsActive = gHazardDetector ? gHazardDetector->getActiveCount() : 0;
-        bool hazardsAvoided = true;
-        for (size_t i = 0; i < mergedPath.size(); i++) {
-            int rr = mergedPath[i].row, cc = mergedPath[i].col;
-            if (campus.isHazard(rr, cc) || (gHazardDetector && gHazardDetector->isHazard(rr, cc))) {
-                hazardsAvoided = false;
-                break;
-            }
-        }
-        out << "--- Hazards Encountered ---\n";
-        out << "Total Hazards Injected: " << hazardsTotal << "\n";
-        out << "Active Hazards: " << hazardsActive << "\n";
-        out << "Hazards Avoided: " << (hazardsAvoided ? "YES" : "NO") << "\n\n";
-
-        out << "==============================\n";
-        out << "End of Report\n";
-        out << "==============================\n";
-        
-        // Ensure file is flushed and closed
+        out << report.str();
         out.flush();
         out.close();
         std::cout << "[INFO] mission_summary.txt written successfully." << std::endl;
     } else {
-        std::cerr << "[ERROR] Failed to open mission_summary.txt for writing!" << std::endl;
+        std::cerr << "[ERROR] Failed to open mission_summary.txt for writing in CWD: "
+                  << std::filesystem::current_path().string() << std::endl;
     }
-
-    // 11. Optional GUI visualization (only if legs exist and built with SFML)
-    // NOTE: Mission summary has already been written above, so GUI blocking is safe
-    // The GUI will display the complete mission visualization and block until user closes it
-#ifdef USE_SFML
-    if (!mergedPath.empty() && (status == PATH_PLANNED || status == RE_ROUTED)) {
-        std::cout << "[INFO] Mission summary written. Launching SFML visualizer..." << std::endl;
-        std::vector<Waypoint> wp;
-        for (auto& p : waypoints) {
-            wp.push_back({p.first, p.second});
-        }
-        Waypoint startWp = {startR, startC};
-        Waypoint goalWp = {goalR, goalC};
-        std::vector<Hazard> hazards;
-        if (gHazardDetector) {
-            hazards = gHazardDetector->getActiveHazards();
-        }
-        // This call will block until the user closes the GUI window
-        displayMissionGUI(campus, mergedPath, startWp, goalWp, wp, hazards);
-        std::cout << "[INFO] SFML visualizer closed. Mission complete." << std::endl;
-    } else {
-        std::cout << "[GUI] Skipping GUI visualization:" << std::endl;
-        if (mergedPath.empty()) {
-            std::cout << "      - No path to display" << std::endl;
-        }
-        if (status != PATH_PLANNED && status != RE_ROUTED) {
-            std::cout << "      - Mission status: " << status << " (not completed)" << std::endl;
-        }
-    }
-#else
-    std::cout << "[GUI] SFML not enabled. Mission summary is available in mission_summary.txt" << std::endl;
-#endif
 
     return 0;
 }

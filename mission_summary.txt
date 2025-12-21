@@ -1,25 +1,63 @@
 ==============================
-MISSION SUMMARY
+        MISSION SUMMARY
 ==============================
-Map: Mapping/campus_map.txt (80x80)
-Start: (3,3)
-Goal: (12,12)
-Waypoints: []
+
+Map: 80x80
+Start: (12, 3)
+Goal:  (12, 24)
+
+Waypoints:
+- None
+
+Total Steps: 23
+Path Length: 23
+Execution Status: COMPLETED
+
+--- Path by Legs ---
 
 Leg 1:
 Path:
-(3,3)
-(4,4)
-(5,5)
-(6,6)
-(7,7)
-(8,8)
-(9,9)
-(10,10)
-(11,11)
+(12,3)
+(12,4)
+(12,5)
+(12,6)
+(12,7)
+(12,8)
+(12,9)
+(12,10)
+(12,11)
 (12,12)
+(12,13)
+(12,14)
+(12,15)
+(12,16)
+(12,17)
+(12,18)
+(12,19)
+(12,20)
+(12,21)
+(12,22)
+(12,23)
+(12,24)
 
 Reroute:
 Path:
+(12,24)
 
-Total steps (deduped across legs): 10
+--- Complete Path Sequence (in traversal order) ---
+(12,3) -> (12,4) -> (12,5) -> (12,6) -> (12,7) -> (12,8) -> (12,9) -> (12,10) -> (12,11) -> (12,12) -> (12,13) -> (12,14) -> (12,15) -> (12,16) -> (12,17) -> (12,18) -> (12,19) -> (12,20) -> (12,21) -> (12,22) -> (12,23) -> (12,24) -> (12,24)
+
+--- DFS Analysis ---
+Reachable Cells (est.): 3493
+
+--- BFS Check ---
+Connectivity: PASSED
+
+--- Hazards Encountered ---
+Total Hazards Injected: 11
+Active Hazards: 11
+Hazards Avoided: YES
+
+==============================
+End of Report
+==============================
