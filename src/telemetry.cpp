@@ -1,5 +1,6 @@
 #include "telemetry.h"
 #include <iostream>
+#include <vector>
 
 TelemetryLog::TelemetryLog() : head(0), tail(0), count(0) {}
 
@@ -60,5 +61,19 @@ int TelemetryLog::toArray(TelemetryEntry* out, int maxCount) const {
         cur = cur->next;
     }
     return written;
+}
+
+std::vector<TelemetryEntry> TelemetryLog::toVector() const {
+    std::vector<TelemetryEntry> result;
+    const TelemetryNode* cur = head;
+    while (cur != 0) {
+        TelemetryEntry e;
+        e.row = cur->row;
+        e.col = cur->col;
+        e.metric = 0;
+        result.push_back(e);
+        cur = cur->next;
+    }
+    return result;
 }
 

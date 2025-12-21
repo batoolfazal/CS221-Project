@@ -1,6 +1,8 @@
 #ifndef TELEMETRY_H
 #define TELEMETRY_H
 
+#include <vector>
+
 // Doubly linked list node for telemetry
 struct TelemetryNode {
     int row;
@@ -34,6 +36,9 @@ public:
     // Copy up to maxCount entries into out array (start-to-end order).
     // Returns number of entries copied.
     int toArray(TelemetryEntry* out, int maxCount) const;
+
+    // Export to std::vector for downstream consumers (e.g., GUI/report)
+    std::vector<TelemetryEntry> toVector() const;
 };
 
 #endif // TELEMETRY_H
