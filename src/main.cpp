@@ -54,6 +54,48 @@ static std::pair<int,int> findNearestValidCell(int r, int c, CampusMap& map) {
     return std::make_pair(-1, -1);
 }
 
+// Count reachable free cells from a start using a simple flood-fill.
+// This does not modify existing DFS/BFS implementations; it's a separate pass for reporting.
+static int countReachableCells(CampusMap& map, int sr, int sc) {
+    if (!map.isInBounds(sr, sc)) return 0;
+    std::string reason;
+    if (!explainCellStatus(map, sr, sc, reason)) return 0;
+    int rows = map.getRows();
+    int cols = map.getCols();
+    bool** visited = new bool*[rows];
+    for (int i = 0; i < rows; i++) {
+        visited[i] = new bool[cols];
+        for (int j = 0; j < cols; j++) visited[i][j] = false;
+    }
+    int maxSize = rows * cols;
+    int* qR = new int[maxSize];
+    int* qC = new int[maxSize];
+    int front = 0, back = 0;
+    qR[back] = sr; qC[back] = sc; back++;
+    visited[sr][sc] = true;
+    int count = 0;
+    int dR[4] = {-1,1,0,0};
+    int dC[4] = {0,0,-1,1};
+    while (front < back) {
+        int r = qR[front], c = qC[front]; front++;
+        count++;
+        for (int k = 0; k < 4; k++) {
+            int nr = r + dR[k], nc = c + dC[k];
+            if (!map.isInBounds(nr, nc)) continue;
+            if (visited[nr][nc]) continue;
+            std::string rsn;
+            if (!explainCellStatus(map, nr, nc, rsn)) continue;
+            visited[nr][nc] = true;
+            qR[back] = nr; qC[back] = nc; back++;
+        }
+    }
+    for (int i = 0; i < rows; i++) delete[] visited[i];
+    delete[] visited;
+    delete[] qR;
+    delete[] qC;
+    return count;
+}
+
 static bool promptAndValidatePoint(const char* label, CampusMap& map, int& r, int& c, bool required) {
     while (true) {
         std::cout << "[" << label << " VALIDATION] Enter " << label << " row and col (0-" << (map.getRows() - 1)
@@ -153,6 +195,7 @@ int main() {
     std::cout << "[DFS] Running DFS pre-check from START to explore reachable free cells...\n";
     if (status == VALIDATED) runDfs(campus, startR, startC);
     std::cout << "[DFS] Traversal completed.\n";
+    int dfsReachable = countReachableCells(campus, startR, startC);
 
     // 5. BFS pre-check
     std::cout << "[BFS] Running BFS connectivity check to first target...\n";
@@ -231,6 +274,7 @@ int main() {
                     TelemetryEntry single;
                     single.row = curR; single.col = curC; single.metric = 0;
                     legs.back().path.push_back(single);
+                    curR = tr; curC = tc;
                     status = RE_ROUTED;
                 } else {
                     legs.push_back({ "Reroute", TelemetryLog(), {}, {} });
@@ -253,6 +297,12 @@ int main() {
                             }
                         }
                     }
+                    if (!legs.back().path.empty()) {
+                        curR = legs.back().path.back().row;
+                        curC = legs.back().path.back().col;
+                    } else {
+                        curR = tr; curC = tc;
+                    }
                     status = RE_ROUTED;
                 }
             } else {
@@ -263,13 +313,18 @@ int main() {
     }
 
     // 9. Visualization of final accepted path only
+    // Consolidate paths for reporting/visualization
+    std::vector<TelemetryEntry> mergedPath;
+    for (size_t i = 0; i < legs.size(); i++) {
+        mergedPath.insert(mergedPath.end(), legs[i].path.begin(), legs[i].path.end());
+    }
+
+    // 9. Visualization (console) of final accepted path only
     if (status == PATH_PLANNED || status == RE_ROUTED) {
         std::cout << "[VIS] Visualization (partial view around START, legend: S=start, G=goal, #=obstacle, N=NFZ, H=hazard, *=path, .=free)\n";
         std::vector<std::pair<int,int>> pathMarks;
-        for (size_t i = 0; i < legs.size(); i++) {
-            for (size_t k = 0; k < legs[i].path.size(); k++) {
-                pathMarks.push_back(std::make_pair(legs[i].path[k].row, legs[i].path[k].col));
-            }
+        for (size_t k = 0; k < mergedPath.size(); k++) {
+            pathMarks.push_back(std::make_pair(mergedPath[k].row, mergedPath[k].col));
         }
         int view = 10;
         int rs = std::max(0, startR - view);
@@ -295,62 +350,75 @@ int main() {
         std::cout << "Mission failed before visualization; skipping grid view.\n";
     }
 
-    // 10. Report generation with sorting per leg
+    // 10. Report generation with traversal-ordered path
+    std::cout << "[INFO] Writing mission_summary.txt...\n";
     std::ofstream out("mission_summary.txt");
     if (out.is_open()) {
         out << "==============================\n";
-        out << "MISSION SUMMARY\n";
-        out << "==============================\n";
-        out << "Map: Mapping/campus_map.txt (" << campus.getRows() << "x" << campus.getCols() << ")\n";
-        out << "Start: (" << startR << "," << startC << ")\n";
-        out << "Goal: (" << goalR << "," << goalC << ")\n";
-        out << "Waypoints: [";
-        for (size_t i = 0; i < waypoints.size(); i++) {
-            out << "(" << waypoints[i].first << "," << waypoints[i].second << ")";
-            if (i + 1 < waypoints.size()) out << ", ";
-        }
-        out << "]\n\n";
-        int totalSteps = 0;
-        for (size_t i = 0; i < legs.size(); i++) {
-            out << legs[i].name << ":\n";
-            if (!legs[i].hazards.empty()) {
-                out << "Hazards encountered:\n";
-                for (size_t h = 0; h < legs[i].hazards.size(); h++) {
-                    out << "  " << legs[i].hazards[h] << "\n";
-                }
-            }
-            out << "Path:\n";
-            std::vector<TelemetryEntry> p = legs[i].path;
-            if (!p.empty()) {
-                if ((int)p.size() <= 16) insertionSort(p.data(), (int)p.size(), cmpByRowCol);
-                else if ((int)p.size() <= 256) quickSort(p.data(), (int)p.size(), cmpByRowCol);
-                else mergeSort(p.data(), (int)p.size(), cmpByRowCol);
-                TelemetryEntry last = p[0];
-                out << "(" << last.row << "," << last.col << ")\n";
-                totalSteps++;
-                for (size_t k = 1; k < p.size(); k++) {
-                    if (p[k].row == last.row && p[k].col == last.col) continue;
-                    out << "(" << p[k].row << "," << p[k].col << ")\n";
-                    last = p[k];
-                    totalSteps++;
-                }
+        out << "        MISSION SUMMARY\n";
+        out << "==============================\n\n";
+        out << "Start: (" << startR << ", " << startC << ")\n";
+        out << "Goal:  (" << goalR << ", " << goalC << ")\n\n";
+        out << "Waypoints:\n";
+        if (waypoints.empty()) out << "- None\n\n";
+        else {
+            for (size_t i = 0; i < waypoints.size(); i++) {
+                out << "- (" << waypoints[i].first << ", " << waypoints[i].second << ")\n";
             }
             out << "\n";
         }
-        out << "Total steps (deduped across legs): " << totalSteps << "\n";
+        int totalSteps = (int)mergedPath.size();
+        out << "Total Steps: " << totalSteps << "\n";
+        out << "Path Length: " << totalSteps << "\n";
+        std::string statusStr = (status == PATH_PLANNED || status == RE_ROUTED) ? "COMPLETED" :
+                                (status == BFS_FAILED) ? "FAILED_BFS" : "FAILED";
+        out << "Execution Status: " << statusStr << "\n\n";
+
+        out << "--- Path Sequence (in traversal order) ---\n";
+        if (!mergedPath.empty()) {
+            for (size_t i = 0; i < mergedPath.size(); i++) {
+                out << "(" << mergedPath[i].row << "," << mergedPath[i].col << ")";
+                if (i + 1 < mergedPath.size()) out << " -> ";
+            }
+            out << "\n";
+        } else {
+            out << "No path recorded.\n";
+        }
+        out << "\n";
+
+        out << "--- DFS Analysis ---\n";
+        out << "Reachable Cells (est.): " << dfsReachable << "\n\n";
+
+        out << "--- BFS Check ---\n";
+        out << "Connectivity: " << (bfsOk ? "PASSED" : "FAILED") << "\n\n";
+
+        int hazardsTotal = gHazardDetector ? gHazardDetector->getTotalDetected() : 0;
+        int hazardsActive = gHazardDetector ? gHazardDetector->getActiveCount() : 0;
+        bool hazardsAvoided = true;
+        for (size_t i = 0; i < mergedPath.size(); i++) {
+            int rr = mergedPath[i].row, cc = mergedPath[i].col;
+            if (campus.isHazard(rr, cc) || (gHazardDetector && gHazardDetector->isHazard(rr, cc))) {
+                hazardsAvoided = false; break;
+            }
+        }
+        out << "--- Hazards Encountered ---\n";
+        out << "Total Hazards Injected: " << hazardsTotal << "\n";
+        out << "Active Hazards: " << hazardsActive << "\n";
+        out << "Hazards Avoided: " << (hazardsAvoided ? "YES" : "NO") << "\n\n";
+
+        out << "==============================\n";
+        out << "End of Report\n";
+        out << "==============================\n";
         out.close();
-        std::cout << "mission_summary.txt written.\n";
+        std::cout << "[INFO] mission_summary.txt written.\n";
     } else {
         std::cout << "Failed to write mission_summary.txt\n";
     }
 
     // Optional GUI visualization (only if legs exist and built with SFML)
 #ifdef USE_SFML
-    if (!legs.empty() && (status == PATH_PLANNED || status == RE_ROUTED)) {
-        std::vector<TelemetryEntry> mergedPath;
-        for (size_t i = 0; i < legs.size(); i++) {
-            mergedPath.insert(mergedPath.end(), legs[i].path.begin(), legs[i].path.end());
-        }
+    if (!mergedPath.empty() && (status == PATH_PLANNED || status == RE_ROUTED)) {
+        std::cout << "[INFO] Launching SFML visualizer...\n";
         std::vector<Waypoint> wp;
         for (auto& p : waypoints) wp.push_back({p.first, p.second});
         Waypoint startWp = {startR, startC};
@@ -358,6 +426,7 @@ int main() {
         std::vector<Hazard> hazards;
         if (gHazardDetector) hazards = gHazardDetector->getActiveHazards();
         displayMissionGUI(campus, mergedPath, startWp, goalWp, wp, hazards);
+        std::cout << "[INFO] SFML visualizer closed.\n";
     } else {
         std::cout << "[GUI] Skipping GUI (no path or mission failed).\n";
     }
