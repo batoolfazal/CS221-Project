@@ -1,6 +1,8 @@
 #include <iostream>
 #include "../include/NFZ.h"
 
+using namespace std;
+
 int main() {
     // Initialize global NFZ pointer if needed
     insertNFZ(10, 10);
@@ -14,11 +16,11 @@ int main() {
     for (int i = 0; i < n; i++) {
         int r = tests[i][0];
         int c = tests[i][1];
-        std::cout << "(" << r << "," << c << "): " << (isNFZ(r,c) ? "NFZ" : "SAFE") << "\n";
+        cout << "(" << r << "," << c << "): " << (isNFZ(r,c) ? "NFZ" : "SAFE") << "\n";
     }
 
     removeNFZ(12, 15);
-    std::cout << "After removal (12,15): " << (isNFZ(12,15) ? "NFZ" : "SAFE") << "\n";
+    cout << "After removal (12,15): " << (isNFZ(12,15) ? "NFZ" : "SAFE") << "\n";
     return 0;
 }
 
