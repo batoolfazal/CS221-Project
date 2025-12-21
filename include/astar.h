@@ -1,7 +1,7 @@
 #ifndef ASTAR_H
 #define ASTAR_H
 
-#include "../Mapping/GridMap.h"
+#include "GridMap.h"
 #include "heap.h"
 
 struct Cell {
